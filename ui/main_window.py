@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from auth.session import get_session, clear_session
-from auth.session import get_session
+from ui.sales_page import SalesPage
 
 
 
@@ -98,10 +98,10 @@ class MainWindow(QMainWindow):
         # ── Panel principal (páginas) ─────────────────────────
         self.stack = QStackedWidget()
 
-        # Páginas vacías — cada dev reemplaza la suya
+        # Páginas — se reemplazan a medida que se implementan
         self.pages = {
             "inventario": self._placeholder("Módulo de Inventario"),
-            "ventas":     self._placeholder("Módulo de Ventas"),
+            "ventas":     SalesPage(),
             "reportes":   self._placeholder("Módulo de Reportes"),
         }
 
