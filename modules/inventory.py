@@ -8,7 +8,15 @@ class InventoryManager:
         Retorna todos los productos del inventario.
         Retorna: {"success": True, "data": [lista de productos]}
         """
-        pass
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, nombre, precio, cantidad, categoria FROM productos ORDER BY nombre")
+            rows = [dict(r) for r in cursor.fetchall()]
+            conn.close()
+            return {"success": True, "data": rows}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     def get_by_id(self, producto_id):
         """
@@ -43,4 +51,28 @@ class InventoryManager:
         Descuenta cantidad del stock de un producto al registrar una venta.
         Retorna: {"success": True, "data": None} o {"success": False, "error": "..."}
         """
-        pass
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT cantidad FROM productos WHERE id = ?", (producto_id,))
+            producto = cursor.fetchone()
+
+            if not producto:
+                conn.close()
+                return {"success": False, "error": f"Producto {producto_id} no encontrado"}
+
+            if producto["cantidad"] < cantidad:
+                conn.close()
+                return {"success": False, "error": "Stock insuficiente"}
+
+            cursor.execute(
+                "UPDATE productos SET cantidad = cantidad - ? WHERE id = ?",
+                (cantidad, producto_id)
+            )
+            conn.commit()
+            conn.close()
+            return {"success": True, "data": None}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}

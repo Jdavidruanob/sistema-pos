@@ -58,5 +58,42 @@ def init_db():
         ("Vendedor Demo", "vendedor", "vendedor123", "vendedor"),
     ])
 
+    # Productos de prueba (solo si la tabla está vacía)
+    cursor.execute("SELECT COUNT(*) FROM productos")
+    if cursor.fetchone()[0] == 0:
+        cursor.executemany("""
+            INSERT INTO productos (nombre, precio, cantidad, categoria)
+            VALUES (?, ?, ?, ?)
+        """, [
+            # Bebidas
+            ("Agua Botella 500ml",          1500,  80, "Bebidas"),
+            ("Jugo de Naranja Natural",      4500,  40, "Bebidas"),
+            ("Gaseosa Cola 350ml",           2500,  60, "Bebidas"),
+            ("Té Frío Limón 400ml",          3000,  35, "Bebidas"),
+            ("Café Americano",               3500,  50, "Bebidas"),
+            # Snacks
+            ("Papas Fritas Bolsa 150g",      3200,  45, "Snacks"),
+            ("Maní Salado 100g",             2800,  30, "Snacks"),
+            ("Galletas Integrales 200g",     4000,  25, "Snacks"),
+            ("Barra de Cereal Avena",        2200,  55, "Snacks"),
+            ("Chitos Maíz 80g",              2000,  40, "Snacks"),
+            # Lácteos
+            ("Leche Entera 1L",              4200,  30, "Lácteos"),
+            ("Yogur Fresa 200g",             3800,  20, "Lácteos"),
+            ("Queso Campesino 250g",         6500,  15, "Lácteos"),
+            ("Kumis 200ml",                  2900,  25, "Lácteos"),
+            # Panadería
+            ("Pan Tajado Integral",          5500,  20, "Panadería"),
+            ("Croissant Mantequilla",        3500,  18, "Panadería"),
+            ("Almojábana",                   1800,  30, "Panadería"),
+            ("Pandebono",                    2000,  35, "Panadería"),
+            # Platos
+            ("Bandeja Paisa",               18000,  10, "Platos"),
+            ("Arroz con Pollo",             14000,  12, "Platos"),
+            ("Sopa de Lentejas",             9000,  15, "Platos"),
+            ("Empanada de Pipián",           2500,  40, "Platos"),
+            ("Arepas con Queso x2",          4500,  25, "Platos"),
+        ])
+
     conn.commit()
     conn.close()
