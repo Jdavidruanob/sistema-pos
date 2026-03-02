@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from auth.session import get_session, clear_session
+from ui.inventory_page import InventoryPage
 from ui.sales_page import SalesPage
 from ui.reports_page import ReportsPage
 
@@ -101,7 +102,7 @@ class MainWindow(QMainWindow):
 
         # Páginas — se reemplazan a medida que se implementan
         self.pages = {
-            "inventario": self._placeholder("Módulo de Inventario"),
+            "inventario": InventoryPage(),
             "ventas":     SalesPage(),
             "reportes":   ReportsPage(),
         }
