@@ -137,5 +137,8 @@ class MainWindow(QMainWindow):
             ))
 
     def logout(self):
+        from ui.login_window import LoginWindow
         clear_session()
+        self.login = LoginWindow()
+        self.login.show()
         self.close()
