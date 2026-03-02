@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from auth.session import get_session, clear_session
 from ui.sales_page import SalesPage
+from ui.reports_page import ReportsPage
 
 
 
@@ -102,7 +103,7 @@ class MainWindow(QMainWindow):
         self.pages = {
             "inventario": self._placeholder("Módulo de Inventario"),
             "ventas":     SalesPage(),
-            "reportes":   self._placeholder("Módulo de Reportes"),
+            "reportes":   ReportsPage(),
         }
 
         for page in self.pages.values():
