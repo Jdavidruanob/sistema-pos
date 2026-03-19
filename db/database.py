@@ -47,6 +47,16 @@ def init_db():
             FOREIGN KEY (venta_id)    REFERENCES ventas(id),
             FOREIGN KEY (producto_id) REFERENCES productos(id)
         );
+                         
+        CREATE TABLE IF NOT EXISTS permisos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER NOT NULL,
+            modulo TEXT NOT NULL,
+            permitido INTEGER NOT NULL DEFAULT 1,
+            UNIQUE(usuario_id, modulo),
+            FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+        );
+                         
     """)
 
     # Usuarios por defecto

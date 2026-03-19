@@ -6,7 +6,8 @@ from PySide6.QtCore import Qt
 from auth.session import get_session, clear_session
 from ui.sales_page import SalesPage
 
-
+from ui.inventory_page import InventoryPage
+from ui.users_page import UsersPage
 
 class MainWindow(QMainWindow):
 
@@ -41,8 +42,10 @@ class MainWindow(QMainWindow):
         sidebar_layout.addWidget(title)
 
         # Botones de navegación
+        
         self.nav_buttons = {}
         nav_items = [
+            ("usuarios", "👥  Usuarios"),
             ("inventario",  "📦  Inventario"),
             ("ventas",      "🛒  Ventas"),
             ("reportes",    "📊  Reportes"),
@@ -98,9 +101,9 @@ class MainWindow(QMainWindow):
         # ── Panel principal (páginas) ─────────────────────────
         self.stack = QStackedWidget()
 
-        # Páginas — se reemplazan a medida que se implementan
         self.pages = {
-            "inventario": self._placeholder("Módulo de Inventario"),
+            "usuarios": UsersPage(),
+            "inventario": InventoryPage(),   # ← conectado
             "ventas":     SalesPage(),
             "reportes":   self._placeholder("Módulo de Reportes"),
         }
@@ -111,10 +114,10 @@ class MainWindow(QMainWindow):
         root_layout.addWidget(self.sidebar)
         root_layout.addWidget(self.stack)
 
-
         # Ocultar secciones según rol
         if get_session()["rol"] != "admin":
             self.nav_buttons["reportes"].hide()
+            self.nav_buttons["usuarios"].hide()
 
         # Página inicial
         self.navigate("inventario")
