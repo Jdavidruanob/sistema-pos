@@ -23,11 +23,13 @@ def init_db():
         );
 
         CREATE TABLE IF NOT EXISTS productos (
-            id        INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre    TEXT    NOT NULL,
-            precio    REAL    NOT NULL,
-            cantidad  INTEGER NOT NULL DEFAULT 0,
-            categoria TEXT
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre            TEXT    NOT NULL,
+            precio            REAL    NOT NULL,
+            cantidad          INTEGER NOT NULL DEFAULT 0,
+            categoria         TEXT,
+            descuento_pct     REAL    NOT NULL DEFAULT 0,
+            descuento_activo  INTEGER NOT NULL DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS ventas (
@@ -39,15 +41,32 @@ def init_db():
         );
 
         CREATE TABLE IF NOT EXISTS detalle_venta (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            venta_id    INTEGER NOT NULL,
-            producto_id INTEGER NOT NULL,
-            cantidad    INTEGER NOT NULL,
-            precio_unit REAL    NOT NULL,
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            venta_id       INTEGER NOT NULL,
+            producto_id    INTEGER NOT NULL,
+            cantidad       INTEGER NOT NULL,
+            precio_unit    REAL    NOT NULL,
+            descuento_monto REAL   NOT NULL DEFAULT 0,
             FOREIGN KEY (venta_id)    REFERENCES ventas(id),
             FOREIGN KEY (producto_id) REFERENCES productos(id)
         );
     """)
+
+    # Migración: agregar columnas faltantes si no existen
+    cursor.execute("PRAGMA table_info(productos)")
+    columns = [col[1] for col in cursor.fetchall()]
+    
+    if "descuento_pct" not in columns:
+        cursor.execute("ALTER TABLE productos ADD COLUMN descuento_pct REAL NOT NULL DEFAULT 0")
+    
+    if "descuento_activo" not in columns:
+        cursor.execute("ALTER TABLE productos ADD COLUMN descuento_activo INTEGER NOT NULL DEFAULT 0")
+    
+    cursor.execute("PRAGMA table_info(detalle_venta)")
+    columns = [col[1] for col in cursor.fetchall()]
+    
+    if "descuento_monto" not in columns:
+        cursor.execute("ALTER TABLE detalle_venta ADD COLUMN descuento_monto REAL NOT NULL DEFAULT 0")
 
     # Usuarios por defecto
     cursor.executemany("""
@@ -56,6 +75,8 @@ def init_db():
     """, [
         ("Administrador", "admin",    "admin123",    "admin"),
         ("Vendedor Demo", "vendedor", "vendedor123", "vendedor"),
+        ("Vendedor Demo", "vendedor8", "vendedor123", "vendedor"),
+
     ])
 
     # Productos de prueba (solo si la tabla está vacía)

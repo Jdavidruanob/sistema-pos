@@ -11,14 +11,20 @@ class InventoryManager:
         try:
             conn = get_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT id, nombre, precio, cantidad, categoria FROM productos ORDER BY nombre")
+            cursor.execute("""
+                SELECT 
+                    id, nombre, precio, cantidad, categoria, 
+                    descuento_pct, descuento_activo
+                FROM productos 
+                ORDER BY nombre
+            """)
             rows = [dict(r) for r in cursor.fetchall()]
             conn.close()
             return {"success": True, "data": rows}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def get_by_id(self, producto_id):
+    def get_by_id(self):
         """
         Retorna un producto por su ID.
         """
@@ -27,7 +33,12 @@ class InventoryManager:
             cursor = conn.cursor()
 
             cursor.execute(
-                "SELECT id, nombre, precio, cantidad, categoria FROM productos WHERE id = ?",
+                """
+                SELECT id, nombre, precio, cantidad, categoria, 
+                       descuento_pct, descuento_activo 
+                FROM productos 
+                WHERE id = ?
+                """,
                 (producto_id,)
             )
             row = cursor.fetchone()
@@ -136,6 +147,42 @@ class InventoryManager:
                 "UPDATE productos SET cantidad = cantidad - ? WHERE id = ?",
                 (cantidad, producto_id)
             )
+
+            conn.commit()
+            conn.close()
+            return {"success": True, "data": None}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def set_discount(self, producto_id, descuento_pct, descuento_activo):
+        """
+        Configura el descuento de un producto.
+        
+        descuento_pct: porcentaje de descuento (ej: 10 para 10%)
+        descuento_activo: 1 o 0 (booleano para activar/desactivar el descuento)
+        
+        Retorna: {"success": True/False, ...}
+        """
+        try:
+            if descuento_pct < 0 or descuento_pct > 100:
+                return {"success": False, "error": "El descuento debe estar entre 0 y 100%"}
+            
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute(
+                """
+                UPDATE productos
+                SET descuento_pct = ?, descuento_activo = ?
+                WHERE id = ?
+                """,
+                (descuento_pct, descuento_activo, producto_id)
+            )
+
+            if cursor.rowcount == 0:
+                conn.close()
+                return {"success": False, "error": "Producto no encontrado"}
 
             conn.commit()
             conn.close()

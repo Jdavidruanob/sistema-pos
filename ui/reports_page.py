@@ -1,17 +1,17 @@
-from datetime import date
-
+from PySide6.QtCore import Qt, QDate
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QTableWidget, QTableWidgetItem,
-    QHeaderView, QFrame, QSizePolicy, QDateEdit
+    QHeaderView, QFrame, QDateEdit, QMessageBox
 )
-from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QColor, QFont
 
 from modules.reports import ReportManager
+from modules.sales import SalesManager
+from ui.receipt_preview import ReceiptPreviewDialog
 from ui.report_preview import ReportPreviewDialog
 
-# ── Estilos ───────────────────────────────────────────────────────────────────
+
 BTN_PRIMARY = """
     QPushButton {
         background-color: #2E86C1; color: white;
@@ -29,6 +29,16 @@ BTN_REPORT = """
     }
     QPushButton:hover   { background-color: #5B2C6F; }
     QPushButton:pressed { background-color: #4A235A; }
+"""
+BTN_RECEIPT = """
+    QPushButton {
+        background-color: #1E8449; color: white;
+        border: none; border-radius: 6px;
+        font-size: 12px; font-weight: bold; padding: 7px 16px;
+    }
+    QPushButton:hover   { background-color: #196F3D; }
+    QPushButton:pressed { background-color: #145A32; }
+    QPushButton:disabled { background-color: #AAB7B8; }
 """
 TBL_STYLE = """
     QTableWidget {
@@ -69,41 +79,38 @@ TBL_DETAIL_STYLE = """
 
 
 class ReportsPage(QWidget):
-    """Página de Reporte de Ventas del Día (HU-Reportes)."""
+    """Pagina de reporte diario e historial inmediato de ventas."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._manager = ReportManager()
+        self._sales = SalesManager()
         self._ventas: list[dict] = []
+        self._selected_sale_id = None
         self._build_ui()
         self._load_report()
-
-    # ── Construcción UI ───────────────────────────────────────────────────────
 
     def _build_ui(self):
         root = QVBoxLayout(self)
         root.setContentsMargins(24, 24, 24, 24)
         root.setSpacing(16)
 
-        # ── Encabezado ────────────────────────────────────────────────────────
         header_row = QHBoxLayout()
 
-        title = QLabel("📊  Reporte de Ventas del Día")
+        title = QLabel("📊  Reporte de Ventas del Dia")
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: #1F3864;")
         header_row.addWidget(title)
 
         header_row.addStretch()
 
         lbl_fecha_txt = QLabel("Fecha:")
-
         lbl_fecha_txt.setStyleSheet("font-size: 13px; color: #555;")
-
         header_row.addWidget(lbl_fecha_txt)
 
         self.date_picker = QDateEdit()
         self.date_picker.setDate(QDate.currentDate())
-        self.date_picker.setCalendarPopup(True)        # abre calendario al hacer clic
-        self.date_picker.setMaximumDate(QDate.currentDate())  # no permite fechas futuras
+        self.date_picker.setCalendarPopup(True)
+        self.date_picker.setMaximumDate(QDate.currentDate())
         self.date_picker.setFixedHeight(34)
         self.date_picker.setStyleSheet("""
             QDateEdit {
@@ -122,37 +129,33 @@ class ReportsPage(QWidget):
         btn_refresh.clicked.connect(self._load_report)
         header_row.addWidget(btn_refresh)
 
-        # Separador visual entre acciones de filtro y acción principal
         sep_v = QFrame()
         sep_v.setFrameShape(QFrame.VLine)
         sep_v.setStyleSheet("color: #A8C4E8;")
         sep_v.setFixedWidth(1)
         header_row.addWidget(sep_v)
 
-        self.btn_reporte_dia = QPushButton("📄  Reporte del Día")
+        self.btn_reporte_dia = QPushButton("📄  Reporte del Dia")
         self.btn_reporte_dia.setStyleSheet(BTN_REPORT)
         self.btn_reporte_dia.setToolTip(
-            "Genera un reporte completo del día seleccionado\n"
-            "con previsualización, impresión y exportación a PDF."
+            "Genera un reporte completo del dia seleccionado\ncon previsualizacion, impresion y exportacion a PDF."
         )
         self.btn_reporte_dia.clicked.connect(self._open_report_preview)
         header_row.addWidget(self.btn_reporte_dia)
 
         root.addLayout(header_row)
 
-        # ── Tarjetas de resumen ───────────────────────────────────────────────
         cards_row = QHBoxLayout()
         cards_row.setSpacing(16)
 
-        self.card_ventas  = self._make_card("Total de ventas", "0", "#1F3864")
-        self.card_ingresos = self._make_card("Ingresos del día", "$ 0", "#1E8449")
+        self.card_ventas = self._make_card("Total de ventas", "0", "#1F3864")
+        self.card_ingresos = self._make_card("Ingresos del dia", "$ 0", "#1E8449")
 
         cards_row.addWidget(self.card_ventas)
         cards_row.addWidget(self.card_ingresos)
         cards_row.addStretch()
         root.addLayout(cards_row)
 
-        # ── Tabla de ventas ───────────────────────────────────────────────────
         lbl_tabla = QLabel("Transacciones")
         lbl_tabla.setStyleSheet("font-size: 14px; font-weight: bold; color: #1F3864;")
         root.addWidget(lbl_tabla)
@@ -172,15 +175,25 @@ class ReportsPage(QWidget):
         self.table.clicked.connect(self._on_row_selected)
         root.addWidget(self.table, stretch=2)
 
-        # ── Detalle de la venta seleccionada ─────────────────────────────────
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
         sep.setStyleSheet("color: #D5D8DC;")
         root.addWidget(sep)
 
+        detail_header = QHBoxLayout()
+
         self.lbl_detalle_titulo = QLabel("Selecciona una venta para ver el detalle de productos")
         self.lbl_detalle_titulo.setStyleSheet("font-size: 13px; font-weight: bold; color: #1F3864;")
-        root.addWidget(self.lbl_detalle_titulo)
+        detail_header.addWidget(self.lbl_detalle_titulo)
+        detail_header.addStretch()
+
+        self.btn_receipt = QPushButton("Recibo imprimible")
+        self.btn_receipt.setStyleSheet(BTN_RECEIPT)
+        self.btn_receipt.setEnabled(False)
+        self.btn_receipt.clicked.connect(self._open_sale_receipt)
+        detail_header.addWidget(self.btn_receipt)
+
+        root.addLayout(detail_header)
 
         self.detail_table = QTableWidget()
         self.detail_table.setColumnCount(4)
@@ -195,36 +208,31 @@ class ReportsPage(QWidget):
         self.detail_table.setFixedHeight(160)
         root.addWidget(self.detail_table)
 
-        # ── Mensaje "sin ventas" ──────────────────────────────────────────────
-        self.lbl_empty = QLabel("📭  No hay ventas registradas para el día de hoy.")
+        self.lbl_empty = QLabel("📭  No hay ventas registradas para el dia de hoy.")
         self.lbl_empty.setAlignment(Qt.AlignCenter)
-        self.lbl_empty.setStyleSheet(
-            "font-size: 15px; color: #888; padding: 20px;"
-        )
+        self.lbl_empty.setStyleSheet("font-size: 15px; color: #888; padding: 20px;")
         self.lbl_empty.hide()
         root.addWidget(self.lbl_empty)
 
-    # ── Lógica ────────────────────────────────────────────────────────────────
-
     def _load_report(self):
-        """Carga el reporte de la fecha seleccionada."""
         qdate = self.date_picker.date()
-        fecha = qdate.toString("yyyy-MM-dd")  
+        fecha = qdate.toString("yyyy-MM-dd")
 
         result = self._manager.get_daily_report(fecha)
 
         if not result["success"]:
             self.lbl_detalle_titulo.setText(f"Error al cargar el reporte: {result['error']}")
+            self.btn_receipt.setEnabled(False)
             return
 
         data = result["data"]
         self._ventas = data["ventas"]
+        self._selected_sale_id = None
+        self.btn_receipt.setEnabled(False)
 
-        # Actualizar tarjetas
-        self._update_card(self.card_ventas,   "Total de ventas",  str(data["num_ventas"]))
-        self._update_card(self.card_ingresos, "Ingresos del día", f"$ {data['total_dia']:,.0f}")
+        self._update_card(self.card_ventas, "Total de ventas", str(data["num_ventas"]))
+        self._update_card(self.card_ingresos, "Ingresos del dia", f"$ {data['total_dia']:,.0f}")
 
-        # Mostrar / ocultar mensaje vacío
         if not self._ventas:
             self.table.setRowCount(0)
             self.detail_table.setRowCount(0)
@@ -259,8 +267,10 @@ class ReportsPage(QWidget):
             return
 
         venta = self._ventas[row]
+        self._selected_sale_id = venta["venta_id"]
+        self.btn_receipt.setEnabled(True)
         self.lbl_detalle_titulo.setText(
-            f"Detalle venta #{venta['venta_id']}  —  {venta['vendedor']}  —  {venta['hora']}"
+            f"Detalle venta #{venta['venta_id']}  -  {venta['vendedor']}  -  {venta['hora']}"
         )
 
         self.detail_table.setRowCount(0)
@@ -272,7 +282,17 @@ class ReportsPage(QWidget):
             self.detail_table.setItem(r, 2, self._cell(f"$ {p['precio_unit']:,.0f}", Qt.AlignRight))
             self.detail_table.setItem(r, 3, self._cell(f"$ {p['subtotal']:,.0f}", Qt.AlignRight))
 
-    # ── Helpers de UI ─────────────────────────────────────────────────────────
+    def _open_sale_receipt(self):
+        if not self._selected_sale_id:
+            return
+
+        result = self._sales.get_sale(self._selected_sale_id)
+        if not result["success"]:
+            QMessageBox.critical(self, "Error", f"No se pudo cargar el recibo:\n{result['error']}")
+            return
+
+        dlg = ReceiptPreviewDialog(result["data"], parent=self)
+        dlg.exec()
 
     def _make_card(self, titulo: str, valor: str, color: str) -> QWidget:
         card = QWidget()
@@ -310,14 +330,12 @@ class ReportsPage(QWidget):
         return item
 
     def _open_report_preview(self):
-        """Genera y muestra el reporte del día seleccionado con opción de imprimir/exportar."""
         qdate = self.date_picker.date()
         fecha = qdate.toString("yyyy-MM-dd")
 
         result = self._manager.get_daily_report(fecha)
 
         if not result["success"]:
-            from PySide6.QtWidgets import QMessageBox
             QMessageBox.critical(self, "Error", f"No se pudo generar el reporte:\n{result['error']}")
             return
 
