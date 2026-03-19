@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" font-family="Arial, sans-serif">
+
+  <!-- Background -->
+  <rect width="900" height="520" fill="#F4F6F9" rx="12"/>
+
+  <!-- Title -->
+  <text x="450" y="36" text-anchor="middle" font-size="18" font-weight="bold" fill="#1F3864">Diagrama Relacional — Mini-Sistema POS</text>
+
+  <!-- ── TABLA: usuarios ── -->
+  <g transform="translate(40, 70)">
+    <rect width="200" height="190" rx="8" fill="white" stroke="#1F3864" stroke-width="2"/>
+    <rect width="200" height="36" rx="8" fill="#1F3864"/>
+    <rect width="200" height="8" y="28" fill="#1F3864"/>
+    <text x="100" y="23" text-anchor="middle" font-size="13" font-weight="bold" fill="white">usuarios</text>
+    <!-- rows -->
+    <text x="12" y="58"  font-size="12" fill="#E67E22" font-weight="bold">🔑 id</text>
+    <text x="110" y="58"  font-size="11" fill="#888">INTEGER PK</text>
+    <text x="12" y="78"  font-size="12" fill="#333">nombre</text>
+    <text x="110" y="78"  font-size="11" fill="#888">TEXT</text>
+    <text x="12" y="98"  font-size="12" fill="#333">usuario</text>
+    <text x="110" y="98"  font-size="11" fill="#888">TEXT UNIQUE</text>
+    <text x="12" y="118" font-size="12" fill="#333">password</text>
+    <text x="110" y="118" font-size="11" fill="#888">TEXT</text>
+    <text x="12" y="138" font-size="12" fill="#333">rol</text>
+    <text x="110" y="138" font-size="11" fill="#888">admin|vendedor</text>
+    <text x="12" y="158" font-size="12" fill="#333">activo</text>
+    <text x="110" y="158" font-size="11" fill="#888">INTEGER</text>
+  </g>
+
+  <!-- ── TABLA: productos ── -->
+  <g transform="translate(40, 300)">
+    <rect width="200" height="170" rx="8" fill="white" stroke="#1E8449" stroke-width="2"/>
+    <rect width="200" height="36" rx="8" fill="#1E8449"/>
+    <rect width="200" height="8" y="28" fill="#1E8449"/>
+    <text x="100" y="23" text-anchor="middle" font-size="13" font-weight="bold" fill="white">productos</text>
+    <text x="12" y="58"  font-size="12" fill="#E67E22" font-weight="bold">🔑 id</text>
+    <text x="110" y="58"  font-size="11" fill="#888">INTEGER PK</text>
+    <text x="12" y="78"  font-size="12" fill="#333">nombre</text>
+    <text x="110" y="78"  font-size="11" fill="#888">TEXT</text>
+    <text x="12" y="98"  font-size="12" fill="#333">precio</text>
+    <text x="110" y="98"  font-size="11" fill="#888">REAL</text>
+    <text x="12" y="118" font-size="12" fill="#333">cantidad</text>
+    <text x="110" y="118" font-size="11" fill="#888">INTEGER</text>
+    <text x="12" y="138" font-size="12" fill="#333">categoria</text>
+    <text x="110" y="138" font-size="11" fill="#888">TEXT</text>
+  </g>
+
+  <!-- ── TABLA: ventas ── -->
+  <g transform="translate(340, 70)">
+    <rect width="210" height="170" rx="8" fill="white" stroke="#2E86C1" stroke-width="2"/>
+    <rect width="210" height="36" rx="8" fill="#2E86C1"/>
+    <rect width="210" height="8" y="28" fill="#2E86C1"/>
+    <text x="105" y="23" text-anchor="middle" font-size="13" font-weight="bold" fill="white">ventas</text>
+    <text x="12" y="58"  font-size="12" fill="#E67E22" font-weight="bold">🔑 id</text>
+    <text x="120" y="58"  font-size="11" fill="#888">INTEGER PK</text>
+    <text x="12" y="78"  font-size="12" fill="#2980B9" font-weight="bold">🔗 vendedor_id</text>
+    <text x="120" y="78"  font-size="11" fill="#888">FK → usuarios</text>
+    <text x="12" y="98"  font-size="12" fill="#333">total</text>
+    <text x="120" y="98"  font-size="11" fill="#888">REAL</text>
+    <text x="12" y="118" font-size="12" fill="#333">fecha</text>
+    <text x="120" y="118" font-size="11" fill="#888">TEXT datetime</text>
+  </g>
+
+  <!-- ── TABLA: detalle_venta ── -->
+  <g transform="translate(660, 180)">
+    <rect width="210" height="190" rx="8" fill="white" stroke="#8E44AD" stroke-width="2"/>
+    <rect width="210" height="36" rx="8" fill="#8E44AD"/>
+    <rect width="210" height="8" y="28" fill="#8E44AD"/>
+    <text x="105" y="23" text-anchor="middle" font-size="13" font-weight="bold" fill="white">detalle_venta</text>
+    <text x="12" y="58"  font-size="12" fill="#E67E22" font-weight="bold">🔑 id</text>
+    <text x="120" y="58"  font-size="11" fill="#888">INTEGER PK</text>
+    <text x="12" y="78"  font-size="12" fill="#8E44AD" font-weight="bold">🔗 venta_id</text>
+    <text x="120" y="78"  font-size="11" fill="#888">FK → ventas</text>
+    <text x="12" y="98"  font-size="12" fill="#8E44AD" font-weight="bold">🔗 producto_id</text>
+    <text x="120" y="98"  font-size="11" fill="#888">FK → productos</text>
+    <text x="12" y="118" font-size="12" fill="#333">cantidad</text>
+    <text x="120" y="118" font-size="11" fill="#888">INTEGER</text>
+    <text x="12" y="138" font-size="12" fill="#333">precio_unit</text>
+    <text x="120" y="138" font-size="11" fill="#888">REAL</text>
+  </g>
+
+  <!-- ── RELACIONES ── -->
+
+  <!-- usuarios → ventas (1:N) -->
+  <!-- sale del lado derecho de usuarios (x=240, y=70+105=175) -->
+  <!-- entra al lado izquierdo de ventas (x=340, y=70+105=175) -->
+  <line x1="240" y1="175" x2="340" y2="130" stroke="#2E86C1" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="268" y="148" font-size="10" fill="#2E86C1" font-weight="bold">1</text>
+  <text x="318" y="126" font-size="10" fill="#2E86C1" font-weight="bold">N</text>
+
+  <!-- ventas → detalle_venta (1:N) -->
+  <line x1="550" y1="155" x2="660" y2="248" stroke="#8E44AD" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="558" y="148" font-size="10" fill="#8E44AD" font-weight="bold">1</text>
+  <text x="648" y="258" font-size="10" fill="#8E44AD" font-weight="bold">N</text>
+
+  <!-- productos → detalle_venta (1:N) -->
+  <line x1="240" y1="370" x2="660" y2="320" stroke="#1E8449" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="248" y="366" font-size="10" fill="#1E8449" font-weight="bold">1</text>
+  <text x="648" y="316" font-size="10" fill="#1E8449" font-weight="bold">N</text>
+
+  <!-- Leyenda -->
+  <g transform="translate(340, 380)">
+    <rect width="300" height="100" rx="8" fill="white" stroke="#CCC" stroke-width="1"/>
+    <text x="150" y="22" text-anchor="middle" font-size="12" font-weight="bold" fill="#1F3864">Leyenda</text>
+    <line x1="16" y1="40" x2="50" y2="40" stroke="#555" stroke-width="1.5" stroke-dasharray="6,3"/>
+    <text x="58" y="44" font-size="11" fill="#333">Relación FK (línea punteada)</text>
+    <text x="16" y="64" font-size="11" fill="#E67E22" font-weight="bold">🔑</text>
+    <text x="30" y="64" font-size="11" fill="#333"> Primary Key</text>
+    <text x="16" y="82" font-size="11" fill="#2980B9" font-weight="bold">🔗</text>
+    <text x="30" y="82" font-size="11" fill="#333"> Foreign Key</text>
+  </g>
+
+</svg>
