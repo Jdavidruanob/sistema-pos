@@ -65,14 +65,14 @@ class SalesManager:
 
         items es una lista de diccionarios con este formato:
         [
-            {"producto_id": 1, "cantidad": 2, "precio_unit": 5000},
-            {"producto_id": 3, "cantidad": 1, "precio_unit": 12000},
+            {"producto_id": 1, "cantidad": 2},
+            {"producto_id": 3, "cantidad": 1},
         ]
 
         Este método:
         - Verifica stock suficiente antes de hacer cambios
-        - Obtiene información de descuentos del producto
-        - Calcula el total sumando cantidad * precio_unit - descuentos
+        - Obtiene precio base y descuento vigente del producto
+        - Calcula el total sumando cantidad * precio_base - descuentos
         - Inserta la venta en la tabla ventas
         - Inserta cada item con descuento_monto en detalle_venta
         - Descuenta stock
@@ -90,7 +90,7 @@ class SalesManager:
             for item in items:
                 cursor.execute(
                     """
-                    SELECT cantidad, nombre, descuento_pct, descuento_activo 
+                    SELECT cantidad, nombre, precio, descuento_pct, descuento_activo
                     FROM productos WHERE id = ?
                     """,
                     (item["producto_id"],)
@@ -109,18 +109,21 @@ class SalesManager:
                                  f"disponible {producto['cantidad']}, solicitado {item['cantidad']}"
                     }
 
+                precio_base = producto["precio"]
+                subtotal_bruto = item["cantidad"] * precio_base
+
                 # Calcular descuento si está activo
                 descuento_monto = 0.0
-                if producto["descuento_activo"]:
-                    descuento_monto = (item["cantidad"] * item["precio_unit"]) * (producto["descuento_pct"] / 100.0)
+                if producto["descuento_activo"] and producto["descuento_pct"] > 0:
+                    descuento_monto = subtotal_bruto * (producto["descuento_pct"] / 100.0)
                 
-                subtotal_con_descuento = (item["cantidad"] * item["precio_unit"]) - descuento_monto
+                subtotal_con_descuento = subtotal_bruto - descuento_monto
                 total += subtotal_con_descuento
 
                 items_con_descuento.append({
                     "producto_id": item["producto_id"],
                     "cantidad": item["cantidad"],
-                    "precio_unit": item["precio_unit"],
+                    "precio_unit": precio_base,
                     "descuento_monto": descuento_monto,
                 })
 

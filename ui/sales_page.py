@@ -114,9 +114,9 @@ class SalesPage(QWidget):
         layout.addWidget(self.search_input)
 
         self.product_table = QTableWidget()
-        self.product_table.setColumnCount(5)
+        self.product_table.setColumnCount(6)
         self.product_table.setHorizontalHeaderLabels(
-            ["ID", "Nombre", "Categoria", "Precio", "Stock"]
+            ["ID", "Nombre", "Categoria", "Precio base", "Precio desc.", "Stock"]
         )
         self.product_table.setStyleSheet(TBL_STYLE)
         self.product_table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -126,8 +126,9 @@ class SalesPage(QWidget):
         self.product_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.product_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.product_table.setColumnWidth(0, 40)
-        self.product_table.setColumnWidth(3, 90)
-        self.product_table.setColumnWidth(4, 60)
+        self.product_table.setColumnWidth(3, 95)
+        self.product_table.setColumnWidth(4, 95)
+        self.product_table.setColumnWidth(5, 60)
         self.product_table.doubleClicked.connect(self._add_selected_to_cart)
         layout.addWidget(self.product_table)
 
@@ -165,9 +166,9 @@ class SalesPage(QWidget):
         layout.addWidget(lbl)
 
         self.cart_table = QTableWidget()
-        self.cart_table.setColumnCount(5)
+        self.cart_table.setColumnCount(7)
         self.cart_table.setHorizontalHeaderLabels(
-            ["Producto", "Cant.", "Precio unit.", "Subtotal", ""]
+            ["Producto", "Cant.", "Precio base", "Desc.", "Precio final", "Subtotal", ""]
         )
         self.cart_table.setStyleSheet(TBL_STYLE)
         self.cart_table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -177,7 +178,9 @@ class SalesPage(QWidget):
         self.cart_table.setColumnWidth(1, 55)
         self.cart_table.setColumnWidth(2, 95)
         self.cart_table.setColumnWidth(3, 90)
-        self.cart_table.setColumnWidth(4, 36)
+        self.cart_table.setColumnWidth(4, 95)
+        self.cart_table.setColumnWidth(5, 95)
+        self.cart_table.setColumnWidth(6, 36)
         layout.addWidget(self.cart_table)
 
         sep = QFrame()
@@ -224,6 +227,31 @@ class SalesPage(QWidget):
         else:
             QMessageBox.warning(self, "Error", f"No se pudieron cargar los productos:\n{result['error']}")
 
+    def on_activated(self):
+        """Se ejecuta al abrir la sección de Ventas desde el menú."""
+        self._load_products()
+        self._sync_cart_with_latest_products()
+
+    def _sync_cart_with_latest_products(self):
+        """Sincroniza precio base y descuento de items ya agregados al carrito."""
+        if not self._cart:
+            return
+
+        products_by_id = {p["id"]: p for p in self._all_products}
+        for item in self._cart:
+            producto = products_by_id.get(item["producto_id"])
+            if not producto:
+                continue
+
+            item["nombre"] = producto["nombre"]
+            item["stock"] = int(producto["cantidad"])
+            item["precio_base"] = float(producto["precio"])
+            descuento_pct = float(producto.get("descuento_pct", 0) or 0)
+            item["descuento_pct"] = descuento_pct
+            item["descuento_activo"] = int(bool(producto.get("descuento_activo")) and descuento_pct > 0)
+
+        self._refresh_cart()
+
     def _render_product_table(self, products: list[dict]):
         self.product_table.setRowCount(0)
         for p in products:
@@ -231,11 +259,16 @@ class SalesPage(QWidget):
             self.product_table.insertRow(row)
 
             self.product_table.setItem(row, 0, self._cell(str(p["id"]), Qt.AlignCenter))
-            
-            # Mostrar nombre con indicador de descuento si aplica
+
+            descuento_pct = float(p.get("descuento_pct", 0) or 0)
+            descuento_activo = bool(p.get("descuento_activo")) and descuento_pct > 0
+            precio_base = float(p["precio"])
+            precio_final = precio_base * (1 - descuento_pct / 100.0) if descuento_activo else precio_base
+
+            # Mostrar nombre con indicador de promoción si aplica
             nombre = p["nombre"]
-            if p.get("descuento_activo") and p.get("descuento_pct", 0) > 0:
-                nombre_item = self._cell(f"🎁 {nombre}")
+            if descuento_activo:
+                nombre_item = self._cell(f"🎁 {nombre} ({descuento_pct:.0f}% OFF)")
                 nombre_item.setForeground(QColor("#1E8449"))
                 font = nombre_item.font()
                 font.setBold(True)
@@ -243,25 +276,31 @@ class SalesPage(QWidget):
                 self.product_table.setItem(row, 1, nombre_item)
             else:
                 self.product_table.setItem(row, 1, self._cell(nombre))
-            
+
             self.product_table.setItem(row, 2, self._cell(p["categoria"] or "-"))
-            
-            # Mostrar precio con descuento tachado si aplica
-            if p.get("descuento_activo") and p.get("descuento_pct", 0) > 0:
-                desc_pct = p.get("descuento_pct", 0)
-                precio_item = self._cell(f"$ {p['precio']:,.0f}", Qt.AlignRight)
-                precio_item.setForeground(QColor("#A93226"))  # Rojo para destacar
-                font = precio_item.font()
+
+            # Precio base (tachado cuando hay descuento activo)
+            precio_base_item = self._cell(f"$ {precio_base:,.0f}", Qt.AlignRight)
+            if descuento_activo:
+                precio_base_item.setForeground(QColor("#A93226"))
+                font = precio_base_item.font()
                 font.setStrikeOut(True)
-                precio_item.setFont(font)
-                self.product_table.setItem(row, 3, precio_item)
-            else:
-                self.product_table.setItem(row, 3, self._cell(f"$ {p['precio']:,.0f}", Qt.AlignRight))
-            
+                precio_base_item.setFont(font)
+            self.product_table.setItem(row, 3, precio_base_item)
+
+            # Precio final con descuento aplicado
+            precio_desc_item = self._cell(f"$ {precio_final:,.0f}", Qt.AlignRight)
+            if descuento_activo:
+                precio_desc_item.setForeground(QColor("#1E8449"))
+                font = precio_desc_item.font()
+                font.setBold(True)
+                precio_desc_item.setFont(font)
+            self.product_table.setItem(row, 4, precio_desc_item)
+
             stock_item = self._cell(str(p["cantidad"]), Qt.AlignCenter)
             if p["cantidad"] == 0:
                 stock_item.setForeground(QColor("#C0392B"))
-            self.product_table.setItem(row, 4, stock_item)
+            self.product_table.setItem(row, 5, stock_item)
 
     def _filter_products(self, text: str):
         text = text.lower().strip()
@@ -286,17 +325,19 @@ class SalesPage(QWidget):
             return
 
         producto_id = int(self.product_table.item(row, 0).text())
-        nombre = self.product_table.item(row, 1).text().replace("🎁 ", "")  # Remover el emoji de descuento si existe
-        precio_text = self.product_table.item(row, 3).text().replace("$", "").replace(",", "").strip()
-        precio_unit = float(precio_text)
-        stock = int(self.product_table.item(row, 4).text())
         cantidad = self.qty_spin.value()
 
-        # Obtener información del producto para descuentos
+        # Tomar datos del producto desde la fuente real, no desde el texto de la tabla.
         producto_data = next((p for p in self._all_products if p["id"] == producto_id), None)
         if not producto_data:
             QMessageBox.warning(self, "Error", f"No se pudo encontrar la información del producto")
             return
+
+        nombre = producto_data["nombre"]
+        stock = int(producto_data["cantidad"])
+        precio_base = float(producto_data["precio"])
+        descuento_pct = float(producto_data.get("descuento_pct", 0) or 0)
+        descuento_activo = int(bool(producto_data.get("descuento_activo")) and descuento_pct > 0)
 
         if stock == 0:
             QMessageBox.warning(self, "Sin stock", f"'{nombre}' no tiene stock disponible.")
@@ -321,17 +362,19 @@ class SalesPage(QWidget):
                     )
                     return
                 item["cantidad"] = nueva_cant
+                item["descuento_pct"] = descuento_pct
+                item["descuento_activo"] = descuento_activo
                 self._refresh_cart()
                 return
 
         self._cart.append({
             "producto_id": producto_id,
             "nombre": nombre,
-            "precio_unit": precio_unit,
+            "precio_base": precio_base,
             "cantidad": cantidad,
             "stock": stock,
-            "descuento_pct": producto_data.get("descuento_pct", 0),
-            "descuento_activo": producto_data.get("descuento_activo", 0),
+            "descuento_pct": descuento_pct,
+            "descuento_activo": descuento_activo,
         })
         self.qty_spin.setValue(1)
         self._refresh_cart()
@@ -342,42 +385,63 @@ class SalesPage(QWidget):
         total_descuentos = 0.0
 
         for idx, item in enumerate(self._cart):
-            subtotal_bruto = item["cantidad"] * item["precio_unit"]
-            descuento = 0.0
-            
-            # Calcular descuento si está activo
-            if item.get("descuento_activo") and item.get("descuento_pct", 0) > 0:
-                descuento = subtotal_bruto * (item.get("descuento_pct", 0) / 100.0)
-            
+            precio_base = float(item["precio_base"])
+            descuento_pct = float(item.get("descuento_pct", 0) or 0)
+            descuento_activo = bool(item.get("descuento_activo")) and descuento_pct > 0
+            descuento_unit = precio_base * (descuento_pct / 100.0) if descuento_activo else 0.0
+            precio_final_unit = precio_base - descuento_unit
+
+            subtotal_bruto = item["cantidad"] * precio_base
+            descuento = item["cantidad"] * descuento_unit
             subtotal_neto = subtotal_bruto - descuento
             total_bruto += subtotal_bruto
             total_descuentos += descuento
 
             row = self.cart_table.rowCount()
             self.cart_table.insertRow(row)
-            
-            # Nombre con descuento si aplica
+
             nombre_display = item["nombre"]
-            if descuento > 0:
-                nombre_display = f"🎁 {item['nombre']} ({item.get('descuento_pct', 0):.0f}% OFF)"
+            if descuento_activo:
+                nombre_display = f"🎁 {item['nombre']}"
             nombre_item = self._cell(nombre_display)
-            if descuento > 0:
+            if descuento_activo:
                 nombre_item.setForeground(QColor("#1E8449"))
                 font = nombre_item.font()
                 font.setBold(True)
                 nombre_item.setFont(font)
             self.cart_table.setItem(row, 0, nombre_item)
-            
+
             self.cart_table.setItem(row, 1, self._cell(str(item["cantidad"]), Qt.AlignCenter))
-            self.cart_table.setItem(row, 2, self._cell(f"$ {item['precio_unit']:,.0f}", Qt.AlignRight))
-            
-            # Mostrar subtotal neto (después del descuento)
-            self.cart_table.setItem(row, 3, self._cell(f"$ {subtotal_neto:,.0f}", Qt.AlignRight))
+            precio_base_item = self._cell(f"$ {precio_base:,.0f}", Qt.AlignRight)
+            if descuento_activo:
+                precio_base_item.setForeground(QColor("#A93226"))
+                font = precio_base_item.font()
+                font.setStrikeOut(True)
+                precio_base_item.setFont(font)
+            self.cart_table.setItem(row, 2, precio_base_item)
+
+            if descuento_activo:
+                self.cart_table.setItem(
+                    row, 3,
+                    self._cell(f"{descuento_pct:.0f}% (-$ {descuento:,.0f})", Qt.AlignRight)
+                )
+            else:
+                self.cart_table.setItem(row, 3, self._cell("No aplica", Qt.AlignCenter))
+
+            precio_final_item = self._cell(f"$ {precio_final_unit:,.0f}", Qt.AlignRight)
+            if descuento_activo:
+                precio_final_item.setForeground(QColor("#1E8449"))
+                font = precio_final_item.font()
+                font.setBold(True)
+                precio_final_item.setFont(font)
+            self.cart_table.setItem(row, 4, precio_final_item)
+
+            self.cart_table.setItem(row, 5, self._cell(f"$ {subtotal_neto:,.0f}", Qt.AlignRight))
 
             btn_del = QPushButton("✕")
             btn_del.setStyleSheet(BTN_DANGER)
             btn_del.clicked.connect(lambda _, i=idx: self._remove_from_cart(i))
-            self.cart_table.setCellWidget(row, 4, btn_del)
+            self.cart_table.setCellWidget(row, 6, btn_del)
 
         # Calcular total final
         total_final = total_bruto - total_descuentos
@@ -418,7 +482,6 @@ class SalesPage(QWidget):
             {
                 "producto_id": item["producto_id"],
                 "cantidad": item["cantidad"],
-                "precio_unit": item["precio_unit"],
             }
             for item in self._cart
         ]

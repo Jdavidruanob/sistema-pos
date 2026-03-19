@@ -132,7 +132,10 @@ class MainWindow(QMainWindow):
         return page
 
     def navigate(self, key):
-        self.stack.setCurrentWidget(self.pages[key])
+        page = self.pages[key]
+        self.stack.setCurrentWidget(page)
+        if hasattr(page, "on_activated"):
+            page.on_activated()
         for k, btn in self.nav_buttons.items():
             btn.setStyleSheet(btn.styleSheet().replace(
                 "background-color: #16407A;", "background: transparent;"

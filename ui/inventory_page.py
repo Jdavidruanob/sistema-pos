@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox, QSpinBox, QMessageBox, QComboBox
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from modules.inventory import InventoryManager
 
 BTN_PRIMARY = """
@@ -91,9 +92,9 @@ class InventoryPage(QWidget):
 
         # Tabla
         self.table = QTableWidget()
-        self.table.setColumnCount(8)
+        self.table.setColumnCount(9)
         self.table.setHorizontalHeaderLabels(
-            ["ID", "Nombre", "Categoría", "Precio", "Stock", "Descuento", "Editar", "Eliminar"]
+            ["ID", "Nombre", "Categoría", "Precio", "Stock", "Descuento", "Configurar", "Editar", "Eliminar"]
         )
         self.table.setStyleSheet(TBL_STYLE)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -106,8 +107,9 @@ class InventoryPage(QWidget):
         self.table.setColumnWidth(3, 90)
         self.table.setColumnWidth(4, 60)
         self.table.setColumnWidth(5, 100)
-        self.table.setColumnWidth(6, 70)
+        self.table.setColumnWidth(6, 110)
         self.table.setColumnWidth(7, 70)
+        self.table.setColumnWidth(8, 70)
         root.addWidget(self.table)
 
     def _load(self):
@@ -135,7 +137,6 @@ class InventoryPage(QWidget):
             if descuento_activo and descuento_pct > 0:
                 descuento_text = f"🎁 {descuento_pct:.0f}%"
                 descuento_item = self._cell(descuento_text, Qt.AlignCenter)
-                from PySide6.QtGui import QColor, QFont
                 descuento_item.setForeground(QColor("#1E8449"))
                 font = descuento_item.font()
                 font.setBold(True)
@@ -147,17 +148,17 @@ class InventoryPage(QWidget):
             btn_discount = QPushButton("🎁 Descuento")
             btn_discount.setStyleSheet(BTN_WARNING)
             btn_discount.clicked.connect(lambda _, pid=p["id"]: self._open_discount_dialog(pid))
-            self.table.setCellWidget(row, 5, btn_discount)
+            self.table.setCellWidget(row, 6, btn_discount)
 
             btn_edit = QPushButton("✏️ Editar")
             btn_edit.setStyleSheet(BTN_WARNING)
             btn_edit.clicked.connect(lambda _, pid=p["id"]: self._open_edit_dialog(pid))
-            self.table.setCellWidget(row, 6, btn_edit)
+            self.table.setCellWidget(row, 7, btn_edit)
 
             btn_del = QPushButton("🗑 Eliminar")
             btn_del.setStyleSheet(BTN_DANGER)
             btn_del.clicked.connect(lambda _, pid=p["id"], nom=p["nombre"]: self._delete(pid, nom))
-            self.table.setCellWidget(row, 7, btn_del)
+            self.table.setCellWidget(row, 8, btn_del)
 
     def _filter(self, text):
         text = text.lower().strip()

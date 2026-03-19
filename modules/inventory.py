@@ -24,7 +24,7 @@ class InventoryManager:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def get_by_id(self):
+    def get_by_id(self, producto_id):
         """
         Retorna un producto por su ID.
         """
