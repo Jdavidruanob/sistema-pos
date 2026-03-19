@@ -9,6 +9,7 @@ from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QColor, QFont
 
 from modules.reports import ReportManager
+from ui.report_preview import ReportPreviewDialog
 
 # ── Estilos ───────────────────────────────────────────────────────────────────
 BTN_PRIMARY = """
@@ -19,6 +20,15 @@ BTN_PRIMARY = """
     }
     QPushButton:hover   { background-color: #1A6FA3; }
     QPushButton:pressed { background-color: #145A87; }
+"""
+BTN_REPORT = """
+    QPushButton {
+        background-color: #6C3483; color: white;
+        border: none; border-radius: 6px;
+        font-size: 13px; font-weight: bold; padding: 8px 18px;
+    }
+    QPushButton:hover   { background-color: #5B2C6F; }
+    QPushButton:pressed { background-color: #4A235A; }
 """
 TBL_STYLE = """
     QTableWidget {
@@ -111,6 +121,22 @@ class ReportsPage(QWidget):
         btn_refresh.setStyleSheet(BTN_PRIMARY)
         btn_refresh.clicked.connect(self._load_report)
         header_row.addWidget(btn_refresh)
+
+        # Separador visual entre acciones de filtro y acción principal
+        sep_v = QFrame()
+        sep_v.setFrameShape(QFrame.VLine)
+        sep_v.setStyleSheet("color: #A8C4E8;")
+        sep_v.setFixedWidth(1)
+        header_row.addWidget(sep_v)
+
+        self.btn_reporte_dia = QPushButton("📄  Reporte del Día")
+        self.btn_reporte_dia.setStyleSheet(BTN_REPORT)
+        self.btn_reporte_dia.setToolTip(
+            "Genera un reporte completo del día seleccionado\n"
+            "con previsualización, impresión y exportación a PDF."
+        )
+        self.btn_reporte_dia.clicked.connect(self._open_report_preview)
+        header_row.addWidget(self.btn_reporte_dia)
 
         root.addLayout(header_row)
 
@@ -282,3 +308,18 @@ class ReportsPage(QWidget):
         item = QTableWidgetItem(text)
         item.setTextAlignment(alignment)
         return item
+
+    def _open_report_preview(self):
+        """Genera y muestra el reporte del día seleccionado con opción de imprimir/exportar."""
+        qdate = self.date_picker.date()
+        fecha = qdate.toString("yyyy-MM-dd")
+
+        result = self._manager.get_daily_report(fecha)
+
+        if not result["success"]:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.critical(self, "Error", f"No se pudo generar el reporte:\n{result['error']}")
+            return
+
+        dlg = ReportPreviewDialog(result["data"], parent=self)
+        dlg.exec()
