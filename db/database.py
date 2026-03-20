@@ -84,9 +84,6 @@ def init_db():
         VALUES (?, ?, ?, ?)
     """, [
         ("Administrador", "admin",    "admin123",    "admin"),
-        ("Vendedor Demo", "vendedor", "vendedor123", "vendedor"),
-        ("Vendedor Demo", "vendedor8", "vendedor123", "vendedor"),
-
     ])
 
     # Productos de prueba (solo si la tabla está vacía)
