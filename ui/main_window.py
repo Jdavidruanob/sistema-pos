@@ -7,9 +7,23 @@ from auth.session import get_session, clear_session
 from ui.inventory_page import InventoryPage
 from ui.sales_page import SalesPage
 from ui.reports_page import ReportsPage
-
-from ui.inventory_page import InventoryPage
 from ui.users_page import UsersPage
+from ui.dashboard_page import DashboardPage
+from modules.users import get_permissions
+
+
+# Módulos disponibles en el orden del sidebar
+NAV_ITEMS = [
+    ("dashboard",  "📊  Dashboard"),
+    ("usuarios",   "👥  Usuarios"),
+    ("inventario", "📦  Inventario"),
+    ("ventas",     "🛒  Ventas"),
+    ("reportes",   "📈  Reportes"),
+]
+
+# Módulos que el admin siempre tiene sin importar permisos
+ADMIN_ALWAYS = {"dashboard", "usuarios", "inventario", "ventas", "reportes"}
+
 
 class MainWindow(QMainWindow):
 
@@ -27,7 +41,7 @@ class MainWindow(QMainWindow):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
-        # ── Sidebar ──────────────────────────────────────────
+        # ── Sidebar ───────────────────────────────────────────
         self.sidebar = QWidget()
         self.sidebar.setFixedWidth(200)
         self.sidebar.setStyleSheet("background-color: #1F3864;")
@@ -36,24 +50,14 @@ class MainWindow(QMainWindow):
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(0)
 
-        # Título en sidebar
         title = QLabel("POS XYZ")
         title.setAlignment(Qt.AlignCenter)
         title.setFixedHeight(60)
         title.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
         sidebar_layout.addWidget(title)
 
-        # Botones de navegación
-        
         self.nav_buttons = {}
-        nav_items = [
-            ("usuarios", "👥  Usuarios"),
-            ("inventario",  "📦  Inventario"),
-            ("ventas",      "🛒  Ventas"),
-            ("reportes",    "📊  Reportes"),
-        ]
-
-        for key, label in nav_items:
+        for key, label in NAV_ITEMS:
             btn = QPushButton(label)
             btn.setFixedHeight(50)
             btn.setStyleSheet("""
@@ -65,12 +69,8 @@ class MainWindow(QMainWindow):
                     text-align: left;
                     padding-left: 24px;
                 }
-                QPushButton:hover {
-                    background-color: #2E5FA3;
-                }
-                QPushButton:pressed {
-                    background-color: #16407A;
-                }
+                QPushButton:hover   { background-color: #2E5FA3; }
+                QPushButton:pressed { background-color: #16407A; }
             """)
             btn.clicked.connect(lambda checked, k=key: self.navigate(k))
             sidebar_layout.addWidget(btn)
@@ -78,7 +78,6 @@ class MainWindow(QMainWindow):
 
         sidebar_layout.addStretch()
 
-        # Info usuario + cerrar sesión
         session = get_session()
         self.user_label = QLabel(f"👤  {session['nombre'] or 'Usuario'}")
         self.user_label.setAlignment(Qt.AlignCenter)
@@ -100,12 +99,13 @@ class MainWindow(QMainWindow):
         btn_logout.clicked.connect(self.logout)
         sidebar_layout.addWidget(btn_logout)
 
-        # ── Panel principal (páginas) ─────────────────────────
+        # ── Panel principal ────────────────────────────────────
         self.stack = QStackedWidget()
 
         self.pages = {
-            "usuarios": UsersPage(),
-            "inventario": InventoryPage(),   # ← conectado
+            "dashboard":  DashboardPage(),
+            "usuarios":   UsersPage(),
+            "inventario": InventoryPage(),
             "ventas":     SalesPage(),
             "reportes":   ReportsPage(),
         }
@@ -116,33 +116,55 @@ class MainWindow(QMainWindow):
         root_layout.addWidget(self.sidebar)
         root_layout.addWidget(self.stack)
 
-        # Ocultar secciones según rol
-        if get_session()["rol"] != "admin":
-            self.nav_buttons["reportes"].hide()
-            self.nav_buttons["usuarios"].hide()
+        # ── Aplicar permisos al sidebar ────────────────────────
+        self._apply_permissions()
 
-        # Página inicial
-        self.navigate("inventario")
+        # ── Página inicial ─────────────────────────────────────
+        primera = self._first_allowed_page()
+        if primera:
+            self.navigate(primera)
 
-    def _placeholder(self, texto):
-        """Página temporal hasta que cada dev conecte su módulo."""
-        page = QWidget()
-        layout = QVBoxLayout(page)
-        label = QLabel(texto)
-        label.setAlignment(Qt.AlignCenter)
-        label.setStyleSheet("font-size: 22px; color: #AAAAAA;")
-        layout.addWidget(label)
-        return page
+    def _apply_permissions(self):
+        """
+        Muestra u oculta botones del sidebar según rol y permisos.
+        - Admin: siempre ve todo, sin consultar la tabla permisos.
+        - Otros: se consulta la tabla permisos en la DB.
+          Si un módulo no tiene registro en permisos, se asume NO permitido.
+        """
+        session = get_session()
+
+        if session["rol"] == "admin":
+            # Admin ve todo, nada que ocultar
+            for btn in self.nav_buttons.values():
+                btn.show()
+            return
+
+        # Leer permisos reales de la DB para este usuario
+        perms = get_permissions(session["id"])
+        # perms = {"inventario": True, "ventas": True, ...}
+
+        for key, btn in self.nav_buttons.items():
+            # Si el módulo tiene permiso True → mostrar, si no → ocultar
+            if perms.get(key, False):
+                btn.show()
+            else:
+                btn.hide()
+
+    def _first_allowed_page(self):
+        """Retorna la primera página visible para navegar al inicio."""
+        for key, _ in NAV_ITEMS:
+            if self.nav_buttons[key].isVisible():
+                return key
+        return None
 
     def navigate(self, key):
+        # Seguridad: no navegar a páginas ocultas
+        if not self.nav_buttons[key].isVisible():
+            return
         page = self.pages[key]
         self.stack.setCurrentWidget(page)
         if hasattr(page, "on_activated"):
             page.on_activated()
-        for k, btn in self.nav_buttons.items():
-            btn.setStyleSheet(btn.styleSheet().replace(
-                "background-color: #16407A;", "background: transparent;"
-            ))
 
     def logout(self):
         from ui.login_window import LoginWindow

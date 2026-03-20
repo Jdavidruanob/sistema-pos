@@ -191,7 +191,7 @@ class UserDialog(QDialog):
         usuario  = self.input_usuario.text().strip()
         password = self.input_password.text()
         rol      = self.combo_rol.currentText()
-
+ 
         if not nombre or not usuario:
             QMessageBox.warning(self, "Campos incompletos",
                                 "Nombre y usuario son obligatorios.")
@@ -200,7 +200,7 @@ class UserDialog(QDialog):
             QMessageBox.warning(self, "Contraseña requerida",
                                 "Debes ingresar una contraseña para el nuevo usuario.")
             return
-
+ 
         if self.editing:
             result = update_user(
                 self.user_data["id"], nombre, usuario, rol,
@@ -208,7 +208,35 @@ class UserDialog(QDialog):
             )
         else:
             result = create_user(nombre, usuario, password, rol)
-
+ 
+            # Al crear, asignar permisos por defecto según rol
+            if result["success"]:
+                from modules.users import save_all_permissions, get_all_users
+                from db.database import get_connection
+ 
+                # Obtener el ID del usuario recién creado
+                conn = get_connection()
+                cursor = conn.cursor()
+                cursor.execute("SELECT id FROM usuarios WHERE usuario = ?", (usuario,))
+                row = cursor.fetchone()
+                conn.close()
+ 
+                if row:
+                    new_id = row["id"]
+                    if rol == "admin":
+                        # Admin obtiene todos los módulos
+                        perms = {m: True for m in ["dashboard", "usuarios", "inventario", "ventas", "reportes"]}
+                    else:
+                        # Vendedor: inventario y ventas por defecto
+                        perms = {
+                            "dashboard":  False,
+                            "usuarios":   False,
+                            "inventario": True,
+                            "ventas":     True,
+                            "reportes":   False,
+                        }
+                    save_all_permissions(new_id, perms)
+ 
         if result["success"]:
             self.accept()
         else:
@@ -503,8 +531,17 @@ class UsersPage(QWidget):
                 QMessageBox.critical(self, "Error", result["error"])
 
     def _on_permissions(self, user: dict):
+        if user["rol"] == "admin":
+            QMessageBox.information(
+                self,
+                "Permisos de administrador",
+                f"'{user['nombre']}' es administrador y tiene acceso completo a todos los módulos del sistema.\n\n"
+                "Los permisos personalizados solo aplican a usuarios con rol vendedor."
+            )
+            return
         dlg = PermissionsDialog(parent=self, user_data=user)
-        dlg.exec()
+        if dlg.exec():
+            self.load_users()
 
     def _on_delete(self, user: dict):
         resp = QMessageBox.question(
