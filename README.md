@@ -6,7 +6,7 @@ Sistema de punto de venta desarrollado con Python + PySide6 + SQLite.
 
 ## ⚙️ Requisitos
 - Python 3.11+
-
+.
 ---
 
 ## 🚀 Instalación
